@@ -2,7 +2,7 @@
 <p> by: Sasha Botsul, Tanner Buol, Logan Farley </p>
 
 ---
-## Shiny App 🎆
+## Shiny App 🪩
 link
 
 ---
