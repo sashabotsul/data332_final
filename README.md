@@ -11,19 +11,27 @@ link
 
 ---
 ## 🫧 Data Cleaning 🫧
-1.
+1. Importing MLB data, renaming columns, and removing columns
 ```
 ```
 
-2.
+2. Fixing MLB team names and applying to dataframe
 ```
 ```
 
-3.
+3. Importing NBA data, renaming columns, and removing NAs
 ```
 ```
 
-4.
+4. Fixing NBA team names and applying to dataframe
+```
+```
+
+5. Adding sport column
+```
+```
+
+6. Combining datasets
 ```
 ```
 
