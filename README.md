@@ -10,7 +10,7 @@ link
 ### This page shows snippets of our code during the process of cleaning our sport salary data, creating charts and the shiny app.
 
 ---
-## Data Cleaning
+## Data Cleaning 🫧
 1.
 ```
 ```
