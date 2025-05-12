@@ -27,7 +27,7 @@ link
 ```
 ```
 
-## Creating our charts
+## Creating our charts 📊
 1.
 - Pivot
 ```
