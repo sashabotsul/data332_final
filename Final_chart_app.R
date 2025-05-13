@@ -3,111 +3,136 @@ library(ggplot2)
 library(dplyr)
 library(tidyr)
 library(scales)
+library(RCurl)
 
-# Example inflation adjustment function (a simple inflation index, customize as needed)
+# Load and prepare MLB data
+mlb_1985_2012_url <- getURL('https://raw.githubusercontent.com/sashabotsul/data332_final/refs/heads/main/data/MLB_Salaries_1985_2012.csv')
+df_mlb_1985_2012 <- read.csv(text = mlb_1985_2012_url) %>%
+  rename(Year = yearID) %>%
+  select(-c(playerID, lgID))
+
+mlb_2011_2024_url <- getURL('https://raw.githubusercontent.com/sashabotsul/data332_final/refs/heads/main/data/mlb_salary_data_2011_2024.csv')
+df_mlb_2011_2024 <- read.csv(text = mlb_2011_2024_url) %>%
+  filter(!(Year %in% c('2011', '2012'))) %>%
+  rename(teamID = Team, salary = Salary) %>%
+  select(-c(Name))
+
+df_mlb_1985_2024 <- bind_rows(df_mlb_1985_2012, df_mlb_2011_2024)
+
+# Fix team names
+replacement_map <- c(
+  "ARI" = "AZ", "CAL" = "LAA", "CHA" = "CWS", "CHN" = "CHC", "CHW" = "CWS",
+  "FLO" = "FLA", "KCA" = "KC", "LAN" = "LAD", "ML4" = "MIL", "MON" = "MTL",
+  "NYA" = "NYY", "NYN" = "NYM", "SDN" = "SD", "SFN" = "SF", "SLN" = "STL",
+  "WAS" = "WSH", "TBA" = "TB", "ANA" = "LAA", "MTL" = "WSH", "FLA" = "MIA"
+)
+
+df_mlb_1985_2024 <- df_mlb_1985_2024 %>%
+  mutate(teamID = ifelse(teamID %in% names(replacement_map), replacement_map[teamID], teamID))
+
+# Create aggregated dataset for app
+df_mlb_summary <- df_mlb_1985_2024 %>%
+  group_by(Year, teamID) %>%
+  summarise(avg_salary = mean(salary, na.rm = TRUE), .groups = 'drop') %>%
+  mutate(league = "MLB") %>%
+  rename(year = Year)
+
+# Load and prepare NBA data
+NBA_1984_2018_url <- getURL('https://raw.githubusercontent.com/sashabotsul/data332_final/refs/heads/main/data/NBA_Salaries_1985to2018.csv')
+df_NBA_1984_2018 <- read.csv(text = NBA_1984_2018_url) %>%
+  select(-c(season, season_end, player_id, league)) %>%
+  rename(year = season_start, teamID = team) %>%
+  mutate(teamID = na_if(teamID, "")) %>%
+  drop_na()
+
+team_replacement_map <- c(
+  "Charlotte Bobcats" = "Charlotte Hornets",
+  "Kansas City Kings" = "Sacramento Kings",
+  "New Jersey Nets" = "Brooklyn Nets",
+  "New Orleans Hornets" = "New Orleans Pelicans",
+  "New Orleans/Oklahoma City Hornets" = "New Orleans Pelicans",
+  "Seattle SuperSonics" = "Oklahoma City Thunder",
+  "Vancouver Grizzlies" = "Memphis Grizzlies",
+  "Washington Bullets" = "Washington Wizards"
+)
+
+df_NBA_1984_2018 <- df_NBA_1984_2018 %>%
+  mutate(teamID = ifelse(teamID %in% names(team_replacement_map), team_replacement_map[teamID], teamID))
+
+df_nba_summary <- df_NBA_1984_2018 %>%
+  group_by(year, teamID) %>%
+  summarise(avg_salary = mean(salary, na.rm = TRUE), .groups = 'drop') %>%
+  mutate(league = "NBA")
+
+# Combine MLB and NBA
+league_data <- bind_rows(df_mlb_summary, df_nba_summary)
+
+# Define inflation adjustment function
 adjust_for_inflation <- function(data, inflation_rate = 0.02) {
-  data %>%
-    mutate(
-      adj_salary = avg_salary * (1 + inflation_rate)^(max(year) - year)
-    )
+  data %>% mutate(adj_salary = avg_salary * (1 + inflation_rate)^(max(year) - year))
 }
 
-# Assume league_data is preloaded and cleaned
-# Columns: year, league, avg_salary, avg_viewership
-
+# Define UI
 ui <- fluidPage(
-  titlePanel("Sports League Salaries and Viewership Over Time"),
-  
+  titlePanel("Sports League Salaries Over Time"),
   sidebarLayout(
     sidebarPanel(
-      selectInput("selected_league", "Choose a League:", choices = NULL, selected = NULL),
-      sliderInput("year_range", "Select Year Range:",
-                  min = 2000, max = 2025,
-                  value = c(2010, 2025), sep = ""),
+      selectInput("selected_league", "Choose a League:", choices = NULL),
+      sliderInput("year_range", "Select Year Range:", min = 1985, max = 2025, value = c(2000, 2024), sep = ""),
       selectInput("inflation_adjustment", "Adjust for Inflation:", choices = c("No", "Yes"), selected = "No")
     ),
-    
     mainPanel(
       tabsetPanel(
-        tabPanel("Salary vs. Viewership (Dual Axis)", plotOutput("combinedTrendPlot")),
-        tabPanel("Normalized Comparison", plotOutput("normalizedPlot"))
+        tabPanel("Salary Trend", plotOutput("salaryTrendPlot")),
+        tabPanel("Team-Year Salary Heatmap", plotOutput("salaryHeatmap"))
       )
     )
   )
 )
 
+# Define server
 server <- function(input, output, session) {
-  # Update league choices dynamically
   observe({
-    updateSelectInput(session, "selected_league",
-                      choices = unique(league_data$league),
-                      selected = unique(league_data$league)[1])
+    updateSelectInput(session, "selected_league", choices = unique(league_data$league), selected = unique(league_data$league)[1])
   })
   
-  # Filter data based on inputs
   filtered_data <- reactive({
     league_data %>%
-      filter(league == input$selected_league,
-             year >= input$year_range[1],
-             year <= input$year_range[2])
+      filter(league == input$selected_league, year >= input$year_range[1], year <= input$year_range[2])
   })
   
-  # Adjust salary for inflation if selected
   adjusted_data <- reactive({
-    data <- filtered_data()
+    df <- filtered_data()
     if (input$inflation_adjustment == "Yes") {
-      adjust_for_inflation(data, inflation_rate = 0.02)  # You can adjust inflation rate here
+      adjust_for_inflation(df)
     } else {
-      data
+      df %>% mutate(adj_salary = avg_salary)
     }
   })
   
-  # Plot with dual y-axes
-  output$combinedTrendPlot <- renderPlot({
+  output$salaryTrendPlot <- renderPlot({
     df <- adjusted_data()
-    
     if (nrow(df) == 0) return(NULL)
-    
-    scale_factor <- max(df$avg_salary, na.rm = TRUE) / max(df$avg_viewership, na.rm = TRUE)
-    
-    ggplot(df, aes(x = year)) +
-      geom_line(aes(y = adj_salary, color = "Adjusted Salary"), size = 1.2) +  # Adjusted Salary if inflation is applied
-      geom_line(aes(y = avg_viewership * scale_factor, color = "Average Viewership"), size = 1.2) +
-      scale_y_continuous(
-        name = "Adjusted Salary (USD)",
-        sec.axis = sec_axis(~ . / scale_factor, name = "Average Viewership")
-      ) +
-      labs(
-        title = paste("Salaries vs. Viewership Over Time -", input$selected_league),
-        x = "Year",
-        color = "Metric"
-      ) +
+    df %>%
+      group_by(year) %>%
+      summarise(mean_salary = mean(adj_salary, na.rm = TRUE)) %>%
+      ggplot(aes(x = year, y = mean_salary)) +
+      geom_line(color = "steelblue", size = 1.2) +
+      labs(title = paste("Average Salary Over Time -", input$selected_league),
+           x = "Year", y = "Average Salary") +
       theme_minimal()
   })
   
-  # Normalized comparison plot
-  output$normalizedPlot <- renderPlot({
+  output$salaryHeatmap <- renderPlot({
     df <- adjusted_data()
-    
     if (nrow(df) == 0) return(NULL)
-    
-    df_norm <- df %>%
-      mutate(
-        salary_scaled = (adj_salary - min(adj_salary)) / (max(adj_salary) - min(adj_salary)),  # Use adjusted salary
-        viewership_scaled = (avg_viewership - min(avg_viewership)) / (max(avg_viewership) - min(avg_viewership))
-      ) %>%
-      pivot_longer(cols = c(salary_scaled, viewership_scaled),
-                   names_to = "metric", values_to = "value")
-    
-    ggplot(df_norm, aes(x = year, y = value, color = metric)) +
-      geom_line(size = 1.2) +
-      labs(
-        title = paste("Normalized Trends in Salaries and Viewership -", input$selected_league),
-        x = "Year",
-        y = "Normalized Value",
-        color = "Metric"
-      ) +
-      theme_minimal()
+    ggplot(df, aes(x = teamID, y = factor(year), fill = adj_salary)) +
+      geom_tile(color = "white") +
+      scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Avg Salary") +
+      labs(title = paste("Average Salary Heatmap -", input$selected_league),
+           x = "Team", y = "Year") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
   })
 }
 
