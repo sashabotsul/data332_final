@@ -2,6 +2,7 @@ library(shiny)
 library(dplyr)
 library(tidyr)
 library(RCurl)
+library(readxl)
 
 rm(list = ls())
 setwd('C:/Users/retai/Documents/r_projects/sports_salaries')
@@ -28,7 +29,7 @@ df_mlb_1985_2024 <- bind_rows(
 #fix team names
 replacement_map <- c(
   "ARI" = "AZ", "CAL" = "LAA", "CHA" = "CWS", "CHN" = "CHC", "CHW" = "CWS",
-  "FLO" = "FLA", "KCA" = "KC", "LAN" = "LAD", "ML4" = "MIL", "MON" = "MTL",
+  "FLO" = "FLA", "KCA" = "KC", "LAN" = "LAD", "ML4" = "MIL", "MON" = "WSH",
   "NYA" = "NYY", "NYN" = "NYM", "SDN" = "SD", "SFN" = "SF", "SLN" = "STL",
   "WAS" = "WSH", "TBA" = "TB", "ANA" = "LAA", "MTL" = "WSH", "FLA" = "MIA"
 )
@@ -53,6 +54,12 @@ df_mlb <- df_mlb_1985_2024 %>%
     median_salary = median(salary)
   )
 
+df_mlb_teams <- df_mlb_1985_2024 %>%
+  group_by(teamID) %>%
+  summarise(
+    count = n()
+  )
+
 
 NBA_1984_2018_url <- getURL('https://raw.githubusercontent.com/sashabotsul/data332_final/refs/heads/main/data/NBA_Salaries_1985to2018.csv')
 df_NBA_1984_2018 <- read.csv(text = NBA_1984_2018_url)
@@ -61,8 +68,9 @@ df_NBA_1984_2018 <- df_NBA_1984_2018 %>% rename(Year = season_start)
 df_NBA_1984_2018 <- df_NBA_1984_2018 %>% rename(teamID = team)
 
 df_NBA_1984_2018 <- df_NBA_1984_2018 %>%
-  mutate(teamID = na_if(teamID, ""))
-df_NBA_1984_2018 <- df_NBA_1984_2018 %>% drop_na()
+  mutate(teamID = na_if(teamID, "")) %>%
+  drop_na() %>%
+  filter(Year >= 1985)
 
 #fix team names
 team_replacement_map <- c(
@@ -97,15 +105,23 @@ df_nba <- df_NBA_1984_2018 %>%
     median_salary = median(salary)
   )
 
-df_mlb <- df_mlb %>% mutate(sport = "MLB")
-df_nba <- df_nba %>% mutate(sport = "NBA")
-
-# Combine both datasets
-df_combined <- bind_rows(df_mlb, df_nba)
-
 # Add a source column to each dataset
 df_mlb_with_teams <- df_mlb_with_teams %>% mutate(sport = "MLB")
 df_nba_with_teams <- df_nba_with_teams %>% mutate(sport = "NBA")
 
 # Combine both datasets
 df_combined_with_teams <- bind_rows(df_mlb_with_teams, df_nba_with_teams)
+
+#read in CPI Data
+df_CPI <- read_excel('data/US_CPI_DATA.xlsx', .name_repair = 'universal')
+
+#average out CPI values per year and calculate the inflation rate
+df_CPI <- df_CPI %>%
+  mutate(Annual_Avg = rowMeans(select(., -Year), na.rm = TRUE)) %>%
+  mutate(Inflation_Rate = (Annual_Avg - lag(Annual_Avg)) / lag(Annual_Avg) * 100) %>%
+  select(-c(Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec, HALF1, HALF2)) %>%
+  filter(Year >= 1985)
+  
+
+df_combined_with_teams <- left_join(df_combined_with_teams, df_CPI, by = "Year")
+write.csv(df_combined_with_teams, "combined_data_with_teams.csv")
