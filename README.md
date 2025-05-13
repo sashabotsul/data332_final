@@ -36,25 +36,9 @@ link
 ```
 
 ## Creating our charts 📊
-1.
+1. Salary Trend Plot Line
 - Chart
-```  #Salary Heat Map
-  output$salaryHeatmap <- renderPlot({
-    df <- adjusted_data()
-    if (nrow(df) == 0) return(NULL)
-    ggplot(df, aes(x = teamID, y = factor(year), fill = adj_salary)) +
-      geom_tile(color = "white") +
-      scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Avg Salary") +
-      labs(title = paste("Average Salary Heatmap -", input$selected_league),
-           x = "Team", y = "Year") +
-      theme_minimal() +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1))
-  })
-```
-
-2.
-- Chart
-```  #Salary Trend Plot
+```   #Salary Trend Plot
   output$salaryTrendPlot <- renderPlot({
     df <- adjusted_data()
     if (nrow(df) == 0) return(NULL)
@@ -66,6 +50,22 @@ link
       labs(title = paste("Average Salary Over Time -", input$selected_league),
            x = "Year", y = "Average Salary") +
       theme_minimal()
+  })
+```
+
+2. Salary Heat Map
+- Chart
+``` #Salary Heat Map
+  output$salaryHeatmap <- renderPlot({
+    df <- adjusted_data()
+    if (nrow(df) == 0) return(NULL)
+    ggplot(df, aes(x = teamID, y = factor(year), fill = adj_salary)) +
+      geom_tile(color = "white") +
+      scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Avg Salary") +
+      labs(title = paste("Average Salary Heatmap -", input$selected_league),
+           x = "Team", y = "Year") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
   })
 ```
 
