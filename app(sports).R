@@ -9,14 +9,23 @@ library(tidyr)
 library(hms)
 library(lubridate)
 library(viridis)
-library(leaflet)
-library(leaflet.extras)
+library(scales)
 rm(list=ls())
 
-data_url <- getURL()
-dataset <- read.csv(text = data_url)
 
-column_names<-colnames(dataset)
+data_url <- getURL('https://raw.githubusercontent.com/sashabotsul/data332_final/refs/heads/main/data/combined_data_with_teams.csv')
+league_data <- read.csv(text = data_url)
+
+
+league_data$Year <- as.numeric(league_data$Year)
+column_names<-colnames(league_data)
+
+
+adjust_for_inflation <- function(league_data, inflation_rate = league_data$Inflation_Rate) {
+  league_data %>% mutate(adj_salary = mean_salary * (1 + inflation_rate)^(max(Year) - Year))
+}
+
+
 
 
 ui <- fluidPage(
@@ -74,23 +83,22 @@ ui <- fluidPage(
   
   
   nav_panel('Salary Charts',
-            h2('Salary Charts'),
-            
-            h4('name of chart'),
-            #plotOutput(''),
-            wellPanel(h5('description of chart')),
-            
-            h4('name of chart'),
-            #plotOutput(''),
+            h2('Salary Trends'),
+            selectInput("selected_league", "Choose a League:", choices = NULL),
+            sliderInput("year_range", "Select Year Range:", min = 1985, max = 2025, value = c(2000, 2024), sep = ""),
+            selectInput("inflation_adjustment", "Adjust for Inflation:", choices = c("No", "Yes")),
+            plotOutput("salaryTrendPlot"),
             wellPanel(h5('description of chart'))
-            
             ),
-  
-  nav_panel('Chart',
-            h2('Chart'),
             
-            h4('name of chart'),
-            #plotOutput(''),
+            
+  
+  nav_panel('Team Salary Heatmap',
+            h2('Team-Year Salary Heatmap'),
+            selectInput("selected_league", "Choose a League:", choices = c('MLB', 'NBA')),
+            sliderInput("year_range", "Select Year Range:", min = 1985, max = 2025, value = c(2000, 2024), sep = ""),
+            selectInput("inflation_adjustment", "Adjust for Inflation:", choices = c("No", "Yes")),
+            plotOutput('salaryHeatmap'),
             wellPanel(h5('description of chart'))
             
             ),
@@ -99,39 +107,105 @@ ui <- fluidPage(
             fluidRow(
     column(3, 
            selectInput('salary_metric', 'Choose Salary Metric:',
-                       choices = c('Average Salary', 'Total Salary'),
-                       selected = 'Average Salary'),
-           #selectInput('sport_choice', 'Choose a Sport')
-                       #choices = unique(dataset$Sport),
-                       #selected = unique(dataset$Sport[1])
+                       choices = c('Average Salary', 'Median Salary')),
+           selectInput("selected_league", "Choose a League:", choices = c('MLB', 'NBA')),
     ),
     
     column(9,
-           #plotOutput('salary_by_year'),
+           plotOutput('salary_by_year_plot', height = "1200px", width = "1000px"),
            wellPanel(h5(''))
            )
   )
   )
   )
-  
-  
 )
 
-server<- function(input, output) {
   
+  
+
+
+server<- function(input, output, session) {
+  
+  observe({
+    updateSelectInput(session, "selected_league", choices = unique(league_data$sport), selected = unique(league_data$sport)[1])
+  })
+  
+  filtered_data <- reactive({
+    league_data %>%
+      filter(sport == input$selected_league,
+             Year >= input$year_range[1],
+             Year <= input$year_range[2])
+  })
+  
+  adjusted_data <- reactive({
+    df <- filtered_data()
+    if (input$inflation_adjustment == "Yes") {
+      adjust_for_inflation(df)
+    } else {
+      df %>% mutate(adj_salary = mean_salary)
+    }
+  })
+  
+
   #Chart1
-  #output$chart1<- renderPlot({})
+  output$salaryTrendPlot <- renderPlot({
+    df <- adjusted_data()
+    if (nrow(df) == 0) return(NULL)
+    df %>%
+      group_by(Year) %>%
+      summarise(mean_salary = mean(adj_salary, na.rm = TRUE)) %>%
+      ggplot(aes(x = Year, y = mean_salary)) +
+      geom_line(color = "steelblue", linewidth = 1.2) +
+      labs(title = paste("Average Salary Over Time -", input$selected_league),
+           x = "Year", y = "Average Salary") +
+      scale_y_continuous(labels = label_comma()) +
+      theme_minimal()
+  })
   
   #Chart2
-  #output$chart2<- renderPlot({})
-  
+  output$salaryHeatmap <- renderPlot({
+    df <- adjusted_data()
+    if (nrow(df) == 0) return(NULL)
+    ggplot(df, aes(x = teamID, y = factor(Year), fill = adj_salary)) +
+      geom_tile(color = "white") +
+      scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Avg Salary", labels = label_comma()) +
+      labs(title = paste("Average Salary Heatmap -", input$selected_league),
+           x = "Team", y = "Year") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  })  
   #Chart3
-  #output$chart3<- renderPlot({})
+  output$salary_by_year_plot <- renderPlot({
+    req(input$salary_metric, input$selected_league)
+    
+    df <- adjusted_data() 
+    if (nrow(df) == 0) return(NULL)
+    
+    salary_col <- if (input$salary_metric == "Average Salary") {
+      "mean_salary"
+    } else {
+      "median_salary"
+    }
+    
+    df <- df %>%
+      group_by(Year, teamID) %>%
+      summarise(salary = mean(.data[[salary_col]], na.rm = TRUE), .groups = "drop")
+    
+    ggplot(df, aes(x = Year, y = salary, fill = teamID)) +
+      geom_line(color = "steelblue", linewidth = 1.2) +
+      geom_point() +
+      facet_wrap(~teamID, scales = 'free', ncol = 4)+
+      labs(title = paste(input$salary_metric, "by Team for", input$selected_league),
+           x = "Year", y = input$salary_metric) +
+      scale_y_continuous(labels = label_comma())+
+      theme_minimal()+
+      theme(legend.position = "none")
+    
+  })
   
-  #Chart4
-  #in notes
   
   
 }
+
 
 shinyApp(ui=ui, server=server)
