@@ -147,7 +147,7 @@ server<- function(input, output, session) {
   })
   
 
-  #Chart1
+  #Salary Plot
   output$salaryTrendPlot <- renderPlot({
     df <- adjusted_data()
     if (nrow(df) == 0) return(NULL)
@@ -162,7 +162,7 @@ server<- function(input, output, session) {
       theme_minimal()
   })
   
-  #Chart2
+  #Salary Heatmap
   output$salaryHeatmap <- renderPlot({
     df <- adjusted_data()
     if (nrow(df) == 0) return(NULL)
@@ -174,7 +174,7 @@ server<- function(input, output, session) {
       theme_minimal() +
       theme(axis.text.x = element_text(angle = 45, hjust = 1))
   })  
-  #Chart3
+  #Salary by year by team
   output$salary_by_year_plot <- renderPlot({
     req(input$salary_metric, input$selected_league)
     
@@ -203,9 +203,6 @@ server<- function(input, output, session) {
     
   })
   
-  
-  
 }
-
 
 shinyApp(ui=ui, server=server)
