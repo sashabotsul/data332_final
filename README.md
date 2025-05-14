@@ -135,11 +135,11 @@ write.csv(df_combined_with_teams, "combined_data_with_teams.csv")
 - Chart
 ```
 output$salaryTrendPlot <- renderPlot({
-    df <- adjusted_data()
+    df <- filtered_data()
     if (nrow(df) == 0) return(NULL)
     df %>%
       group_by(Year) %>%
-      summarise(mean_salary = mean(adj_salary, na.rm = TRUE)) %>%
+      summarise(mean_salary = mean(mean_salary, na.rm = TRUE)) %>%
       ggplot(aes(x = Year, y = mean_salary)) +
       geom_line(color = "steelblue", linewidth = 1.2) +
       labs(title = paste("Average Salary Over Time -", input$selected_league),
@@ -149,13 +149,18 @@ output$salaryTrendPlot <- renderPlot({
   })
 ```
 
-2. Salary Heat Map
+2.
+- Chart
+```
+```
+
+3. Salary Heat Map
 - Chart
 ```
 output$salaryHeatmap <- renderPlot({
-    df <- adjusted_data()
+    df <- filtered_data()
     if (nrow(df) == 0) return(NULL)
-    ggplot(df, aes(x = teamID, y = factor(Year), fill = adj_salary)) +
+    ggplot(df, aes(x = teamID, y = factor(Year), fill = mean_salary)) +
       geom_tile(color = "white") +
       scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Avg Salary", labels = label_comma()) +
       labs(title = paste("Average Salary Heatmap -", input$selected_league),
@@ -165,13 +170,13 @@ output$salaryHeatmap <- renderPlot({
   })  
 ```
 
-3.
+4.
 - Chart
 ```
 output$salary_by_year_plot <- renderPlot({
     req(input$salary_metric, input$selected_league)
     
-    df <- adjusted_data() 
+    df <- filtered_data() 
     if (nrow(df) == 0) return(NULL)
     
     salary_col <- if (input$salary_metric == "Average Salary") {
@@ -197,7 +202,4 @@ output$salary_by_year_plot <- renderPlot({
   })
 ```
 
-4.
-- Chart
-```
-```
+
