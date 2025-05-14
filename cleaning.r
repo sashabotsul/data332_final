@@ -3,6 +3,7 @@ library(dplyr)
 library(tidyr)
 library(RCurl)
 library(readxl)
+library(readr)
 
 rm(list = ls())
 setwd('C:/Users/retai/Documents/r_projects/sports_salaries')
@@ -70,14 +71,70 @@ df_mlb_wins <- df_mlb_wins %>%
 
 NBA_1984_2018_url <- getURL('https://raw.githubusercontent.com/sashabotsul/data332_final/refs/heads/main/data/NBA_Salaries_1985to2018.csv')
 df_NBA_1984_2018 <- read.csv(text = NBA_1984_2018_url)
-df_NBA_1984_2018 <- df_NBA_1984_2018 %>% select(-c(season, season_end, player_id, league))
-df_NBA_1984_2018 <- df_NBA_1984_2018 %>% rename(Year = season_start)
+df_NBA_1984_2018 <- df_NBA_1984_2018 %>% select(-c(season, season_start, player_id, league))
+df_NBA_1984_2018 <- df_NBA_1984_2018 %>% rename(Year = season_end)
 df_NBA_1984_2018 <- df_NBA_1984_2018 %>% rename(teamID = team)
 
 df_NBA_1984_2018 <- df_NBA_1984_2018 %>%
   mutate(teamID = na_if(teamID, "")) %>%
   drop_na() %>%
   filter(Year >= 1985)
+
+#read in more salary data, dataset does not have teams however
+NBA_1990_2023_url <- getURL('https://raw.githubusercontent.com/sashabotsul/data332_final/refs/heads/main/data/NBA_Salaries1990-2023.csv')
+df_NBA_1990_2023 <- read.csv(text = NBA_1990_2023_url)
+
+df_NBA_1990_2023 <- df_NBA_1990_2023 %>%
+  rename(Year = seasonStartYear, Player = playerName) %>%  # Rename columns
+  mutate(Year = Year + 1,  # Add 1 to every value in Year
+         salary = parse_number(salary)) %>%  # Convert salary from character with commas to numeric
+  select(-inflationAdjSalary, -X) %>%
+  filter(Year >= 2018)
+
+#dataset has teams and the same names as the above but not salary
+NBA_1990_2023_playernames <- getURL('https://raw.githubusercontent.com/sashabotsul/data332_final/refs/heads/main/data/NBA_Player_Stats_1950-2022.csv')
+df_NBA_playernames <- read.csv(text = NBA_1990_2023_playernames)
+
+#clean not need data to basically just turn this into a team name key
+df_NBA_playernames <- df_NBA_playernames %>%
+  select(Player, Season, Tm) %>%  # Keep only Player and Season columns
+  rename(Year = Season) %>%   # Rename Season to Year
+  filter(Year >= 2018)        # Remove rows where Year is before 2018
+
+#join the salary and teams together for the extension
+df_NBA_2018_2022 <- left_join(df_NBA_playernames, df_NBA_1990_2023, by = c("Player", "Year"))
+
+# Create a lookup table for team abbreviations
+team_lookup <- tibble(
+  Tm = c("ATL", "BOS", "BRK", "CHO", "CHI", "CLE", "DAL", "DEN", "DET",
+         "GSW", "HOU", "IND", "LAC", "LAL", "MEM", "MIA", "MIL", "MIN",
+         "NOP", "NYK", "OKC", "ORL", "PHI", "PHO", "POR", "SAC", "SAS",
+         "TOR", "UTA", "WAS"),
+  teamName = c("Atlanta Hawks", "Boston Celtics", "Brooklyn Nets",
+               "Charlotte Hornets", "Chicago Bulls", "Cleveland Cavaliers",
+               "Dallas Mavericks", "Denver Nuggets", "Detroit Pistons",
+               "Golden State Warriors", "Houston Rockets", "Indiana Pacers",
+               "Los Angeles Clippers", "Los Angeles Lakers", "Memphis Grizzlies",
+               "Miami Heat", "Milwaukee Bucks", "Minnesota Timberwolves",
+               "New Orleans Pelicans", "New York Knicks", "Oklahoma City Thunder",
+               "Orlando Magic", "Philadelphia 76ers", "Phoenix Suns",
+               "Portland Trail Blazers", "Sacramento Kings", "San Antonio Spurs",
+               "Toronto Raptors", "Utah Jazz", "Washington Wizards")
+)
+
+# Transform the dataset
+df_NBA_2018_2022 <- df_NBA_2018_2022 %>%
+  left_join(team_lookup, by = "Tm") %>%  # Replace abbreviation with full team name
+  rename(teamID = teamName) %>%  # Rename the new column
+  select(-Tm, -Player) %>%  # Drop original team code and Player column
+  drop_na() %>%
+  mutate(Year = as.integer(Year),
+         salary = as.integer(salary))
+
+df_nba_1985_2022 <- bind_rows(
+  df_NBA_1984_2018,
+  df_NBA_2018_2022
+)
 
 #fix team names
 team_replacement_map <- c(
@@ -92,11 +149,10 @@ team_replacement_map <- c(
 )
 
 # Apply mapping to dataset
-df_NBA_1984_2018 <- df_NBA_1984_2018 %>%
+df_nba_1985_2022 <- df_nba_1985_2022 %>%
   mutate(teamID = ifelse(teamID %in% names(team_replacement_map), team_replacement_map[teamID], teamID))
 
-
-df_nba_with_teams <- df_NBA_1984_2018 %>%
+df_nba_with_teams <- df_nba_1985_2022 %>%
   group_by(Year, teamID) %>%
   summarise(
     num_players = n(),
@@ -104,7 +160,7 @@ df_nba_with_teams <- df_NBA_1984_2018 %>%
     median_salary = median(salary)
   )
 
-df_nba <- df_NBA_1984_2018 %>%
+df_nba <- df_nba_1985_2022 %>%
   group_by(Year) %>%
   summarise(
     num_players = n(),
