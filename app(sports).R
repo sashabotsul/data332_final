@@ -21,7 +21,6 @@ league_data$Year <- as.numeric(league_data$Year)
 column_names<-colnames(league_data)
 
 
-
 ui <- fluidPage(
   theme = shinythemes::shinytheme('superhero'),
   
@@ -85,6 +84,14 @@ ui <- fluidPage(
                          based on the chosen year range.'))
     ),
     
+    nav_panel('Salary Growth',
+              h2('Salary Growth trend with inflation growth'),
+              selectInput("selected_league", "Choose a League:", choices = c('MLB', 'NBA')),
+              sliderInput("year_range", "Select Year Range:", min = 1985, max = 2025, value = c(2000, 2024), sep = ""),
+              selectInput('selected_team', 'Choose a Team:', choice = NULL),
+              plotOutput(''),
+              wellPanel(h5(''))
+              ),
     
     
     nav_panel('Team Salary Heatmap',
@@ -125,6 +132,11 @@ server<- function(input, output, session) {
   
   observe({
     updateSelectInput(session, "selected_league", choices = unique(league_data$sport), selected = unique(league_data$sport)[1])
+  })
+  observeEvent(input$selected_league, {
+    team_choices <- unique(league_data$teamID[league_data$sport == input$selected_league])
+    updateSelectInput(session, 'selected_team', choices = team_choices,
+                      selected = team_choices[1])
   })
   
   filtered_data <- reactive({
@@ -191,6 +203,8 @@ server<- function(input, output, session) {
       theme(legend.position = "none")
     
   })
+  
+  
   
   
   
