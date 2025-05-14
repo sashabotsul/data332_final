@@ -133,7 +133,14 @@ server<- function(input, output, session) {
              Year <= input$year_range[2])
   })
   
-  
+  adjusted_data <- reactive({
+    df <- filtered_data()
+    if (input$inflation_adjustment == "Yes") {
+      adjust_for_inflation(df)
+    } else {
+      df %>% mutate(adj_salary = mean_salary)
+    }
+  })
   
 
   #Salary Plot
