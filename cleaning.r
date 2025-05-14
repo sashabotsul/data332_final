@@ -131,9 +131,40 @@ df_NBA_2018_2022 <- df_NBA_2018_2022 %>%
   mutate(Year = as.integer(Year),
          salary = as.integer(salary))
 
+#join 2023 data
+NBA_2023_url <- getURL('https://raw.githubusercontent.com/sashabotsul/data332_final/refs/heads/main/data/nba_salaries_2023.csv')
+df_NBA_2023 <- read.csv(text = NBA_2023_url)
+
+team_lookup2 <- tibble(
+  Team = c("ATL", "BOS", "BRK", "CHO", "CHI", "CLE", "DAL", "DEN", "DET",
+         "GSW", "HOU", "IND", "LAC", "LAL", "MEM", "MIA", "MIL", "MIN",
+         "NOP", "NYK", "OKC", "ORL", "PHI", "PHO", "POR", "SAC", "SAS",
+         "TOR", "UTA", "WAS"),
+  teamName = c("Atlanta Hawks", "Boston Celtics", "Brooklyn Nets",
+               "Charlotte Hornets", "Chicago Bulls", "Cleveland Cavaliers",
+               "Dallas Mavericks", "Denver Nuggets", "Detroit Pistons",
+               "Golden State Warriors", "Houston Rockets", "Indiana Pacers",
+               "Los Angeles Clippers", "Los Angeles Lakers", "Memphis Grizzlies",
+               "Miami Heat", "Milwaukee Bucks", "Minnesota Timberwolves",
+               "New Orleans Pelicans", "New York Knicks", "Oklahoma City Thunder",
+               "Orlando Magic", "Philadelphia 76ers", "Phoenix Suns",
+               "Portland Trail Blazers", "Sacramento Kings", "San Antonio Spurs",
+               "Toronto Raptors", "Utah Jazz", "Washington Wizards")
+)
+
+#clean dataset
+df_NBA_2023 <- df_NBA_2023 %>%
+  mutate(Team = sub("/.*", "", Team)) %>%
+  mutate(year = 2023) %>%
+  left_join(team_lookup2, by = "Team") %>%
+  rename(salary = Salary) %>%
+  rename(teamID = teamName) %>%
+  select(year, salary, teamID)
+
 df_nba_1985_2022 <- bind_rows(
   df_NBA_1984_2018,
-  df_NBA_2018_2022
+  df_NBA_2018_2022,
+  df_NBA_2023
 )
 
 #fix team names
