@@ -21,16 +21,17 @@ league_data$Year <- as.numeric(league_data$Year)
 column_names<-colnames(league_data)
 
 
+
 ui <- fluidPage(
   theme = shinythemes::shinytheme('superhero'),
-
+  
   navset_card_underline(
     header = h1('Sports Salaries'),
     
     nav_panel('Our Project',
               h2('Our Project'),
               wellPanel(
-              tags$p('For this project, we have chosen to analyze different sports
+                tags$p('For this project, we have chosen to analyze different sports
               salaries, comparing them within sports and between other sports.', style = "font-size: 18px;")),
               h3('Our Research'),
               wellPanel(
@@ -59,7 +60,7 @@ ui <- fluidPage(
                   tags$li("Compare individual salaries within a sport", style = "font-size: 18px;")
                 )
               ),
-           
+              
               h3('Ideas and Original Plans'),
               wellPanel(
                 tags$p('We ran into several conflicts with our plans during our project.
@@ -71,53 +72,53 @@ ui <- fluidPage(
                    Additionally, we were hoping to compare our salary information to the
                    viewership trends of the sports. Once again, this data was not readily 
                    available for all of the sports or for more than just world championships.',
-                   style = "font-size: 18px;"))
-              ),
-  
-  
-  nav_panel('Salary Charts',
-            h2('Salary Trends'),
-            selectInput("selected_league", "Choose a League:", choices = NULL),
-            sliderInput("year_range", "Select Year Range:", min = 1985, max = 2025, value = c(2000, 2024), sep = ""),
-            plotOutput("salaryTrendPlot"),
-            wellPanel(h5('This chart displays the average salary trend over time for the selected league,
-                         based on the chosen year range.'))
-            ),
-            
-            
-  
-  nav_panel('Team Salary Heatmap',
-            h2('Team-Year Salary Heatmap'),
-            selectInput("selected_league", "Choose a League:", choices = c('MLB', 'NBA')),
-            sliderInput("year_range", "Select Year Range:", min = 1985, max = 2025, value = c(2000, 2024), sep = ""),
-            plotOutput('salaryHeatmap'),
-            wellPanel(h5('This heatmap visualizes the average salary trend over time for the chosen league by team,
-                         based on the chosen year range.'))
-            
-            ),
-  nav_panel('Salary growth by teams', 
-            h2('Salary growth by teams'),
-            fluidRow(
-    column(3, 
-           selectInput('salary_metric', 'Choose Salary Metric:',
-                       choices = c('Average Salary', 'Median Salary')),
-           selectInput("selected_league", "Choose a League:", choices = c('MLB', 'NBA')),
+                       style = "font-size: 18px;"))
     ),
     
-    column(9,
-           plotOutput('salary_by_year_plot', height = "1200px", width = "1000px"),
-           wellPanel(h5("This chart shows the salary growth trend for each team in the selected league. 
+    
+    nav_panel('Salary Charts',
+              h2('Salary Trends'),
+              selectInput("selected_league", "Choose a League:", choices = NULL),
+              sliderInput("year_range", "Select Year Range:", min = 1985, max = 2025, value = c(2000, 2024), sep = ""),
+              plotOutput("salaryTrendPlot"),
+              wellPanel(h5('This chart displays the average salary trend over time for the selected league,
+                         based on the chosen year range.'))
+    ),
+    
+    
+    
+    nav_panel('Team Salary Heatmap',
+              h2('Team-Year Salary Heatmap'),
+              selectInput("selected_league", "Choose a League:", choices = c('MLB', 'NBA')),
+              sliderInput("year_range", "Select Year Range:", min = 1985, max = 2025, value = c(2000, 2024), sep = ""),
+              plotOutput('salaryHeatmap'),
+              wellPanel(h5('This heatmap visualizes the average salary trend over time for the chosen league by team,
+                         based on the chosen year range.'))
+              
+    ),
+    nav_panel('Salary growth by teams', 
+              h2('Salary growth by teams'),
+              fluidRow(
+                column(3, 
+                       selectInput('salary_metric', 'Choose Salary Metric:',
+                                   choices = c('Average Salary', 'Median Salary')),
+                       selectInput("selected_league", "Choose a League:", choices = c('MLB', 'NBA')),
+                ),
+                
+                column(9,
+                       plotOutput('salary_by_year_plot', height = "1200px", width = "1000px"),
+                       wellPanel(h5("This chart shows the salary growth trend for each team in the selected league. 
                         Each panel displays a team's average or median salary over time, with years shown on the x-axis.
                         We can notice in the MLB that during 2020, there was a significant drop in salaries for every team.
                         There was likely a drop because there was a decrease in games played."))
-           )
-  )
-  )
+                )
+              )
+    )
   )
 )
 
-  
-  
+
+
 
 
 server<- function(input, output, session) {
@@ -133,23 +134,15 @@ server<- function(input, output, session) {
              Year <= input$year_range[2])
   })
   
-  adjusted_data <- reactive({
-    df <- filtered_data()
-    if (input$inflation_adjustment == "Yes") {
-      adjust_for_inflation(df)
-    } else {
-      df %>% mutate(adj_salary = mean_salary)
-    }
-  })
   
-
+  
   #Salary Plot
   output$salaryTrendPlot <- renderPlot({
-    df <- adjusted_data()
+    df <- filtered_data()
     if (nrow(df) == 0) return(NULL)
     df %>%
       group_by(Year) %>%
-      summarise(mean_salary = mean(adj_salary, na.rm = TRUE)) %>%
+      summarise(mean_salary = mean(mean_salary, na.rm = TRUE)) %>%
       ggplot(aes(x = Year, y = mean_salary)) +
       geom_line(color = "steelblue", linewidth = 1.2) +
       labs(title = paste("Average Salary Over Time -", input$selected_league),
@@ -160,9 +153,9 @@ server<- function(input, output, session) {
   
   #Salary Heatmap
   output$salaryHeatmap <- renderPlot({
-    df <- adjusted_data()
+    df <- filtered_data()
     if (nrow(df) == 0) return(NULL)
-    ggplot(df, aes(x = teamID, y = factor(Year), fill = adj_salary)) +
+    ggplot(df, aes(x = teamID, y = factor(Year), fill = mean_salary)) +
       geom_tile(color = "white") +
       scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Avg Salary", labels = label_comma()) +
       labs(title = paste("Average Salary Heatmap -", input$selected_league),
@@ -174,7 +167,7 @@ server<- function(input, output, session) {
   output$salary_by_year_plot <- renderPlot({
     req(input$salary_metric, input$selected_league)
     
-    df <- adjusted_data() 
+    df <- filtered_data() 
     if (nrow(df) == 0) return(NULL)
     
     salary_col <- if (input$salary_metric == "Average Salary") {
