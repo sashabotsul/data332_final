@@ -60,6 +60,13 @@ df_mlb_teams <- df_mlb_1985_2024 %>%
     count = n()
   )
 
+#read in mlb teams
+df_mlb_wins <- read_excel('data/mlb_wins.xlsx', .name_repair = 'universal')
+df_mlb_wins <- df_mlb_wins %>%
+  filter(Year >= 1985) %>%
+  select(where(~ !all(is.na(.))))
+
+
 
 NBA_1984_2018_url <- getURL('https://raw.githubusercontent.com/sashabotsul/data332_final/refs/heads/main/data/NBA_Salaries_1985to2018.csv')
 df_NBA_1984_2018 <- read.csv(text = NBA_1984_2018_url)
@@ -117,11 +124,13 @@ df_CPI <- read_excel('data/US_CPI_DATA.xlsx', .name_repair = 'universal')
 
 #average out CPI values per year and calculate the inflation rate
 df_CPI <- df_CPI %>%
+  select(-c(HALF1, HALF2)) %>%
   mutate(Annual_Avg = rowMeans(select(., -Year), na.rm = TRUE)) %>%
   mutate(Inflation_Rate = (Annual_Avg - lag(Annual_Avg)) / lag(Annual_Avg) * 100) %>%
-  select(-c(Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec, HALF1, HALF2)) %>%
+  select(-c(Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec)) %>%
   filter(Year >= 1985)
   
-
+#join in inflation data
 df_combined_with_teams <- left_join(df_combined_with_teams, df_CPI, by = "Year")
 write.csv(df_combined_with_teams, "combined_data_with_teams.csv")
+
