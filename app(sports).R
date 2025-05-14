@@ -21,13 +21,6 @@ league_data$Year <- as.numeric(league_data$Year)
 column_names<-colnames(league_data)
 
 
-adjust_for_inflation <- function(league_data, inflation_rate = league_data$Inflation_Rate) {
-  league_data %>% mutate(adj_salary = mean_salary * (1 + inflation_rate)^(max(Year) - Year))
-}
-
-
-
-
 ui <- fluidPage(
   theme = shinythemes::shinytheme('superhero'),
 
@@ -86,9 +79,9 @@ ui <- fluidPage(
             h2('Salary Trends'),
             selectInput("selected_league", "Choose a League:", choices = NULL),
             sliderInput("year_range", "Select Year Range:", min = 1985, max = 2025, value = c(2000, 2024), sep = ""),
-            selectInput("inflation_adjustment", "Adjust for Inflation:", choices = c("No", "Yes")),
             plotOutput("salaryTrendPlot"),
-            wellPanel(h5('description of chart'))
+            wellPanel(h5('This chart displays the average salary trend over time for the selected league,
+                         based on the chosen year range.'))
             ),
             
             
@@ -97,13 +90,13 @@ ui <- fluidPage(
             h2('Team-Year Salary Heatmap'),
             selectInput("selected_league", "Choose a League:", choices = c('MLB', 'NBA')),
             sliderInput("year_range", "Select Year Range:", min = 1985, max = 2025, value = c(2000, 2024), sep = ""),
-            selectInput("inflation_adjustment", "Adjust for Inflation:", choices = c("No", "Yes")),
             plotOutput('salaryHeatmap'),
-            wellPanel(h5('description of chart'))
+            wellPanel(h5('This heatmap visualizes the average salary trend over time for the chosen league by team,
+                         based on the chosen year range.'))
             
             ),
-  nav_panel('Salary growth between teams', 
-            h2('Salary growth between teams'),
+  nav_panel('Salary growth by teams', 
+            h2('Salary growth by teams'),
             fluidRow(
     column(3, 
            selectInput('salary_metric', 'Choose Salary Metric:',
@@ -113,7 +106,10 @@ ui <- fluidPage(
     
     column(9,
            plotOutput('salary_by_year_plot', height = "1200px", width = "1000px"),
-           wellPanel(h5(''))
+           wellPanel(h5("This chart shows the salary growth trend for each team in the selected league. 
+                        Each panel displays a team's average or median salary over time, with years shown on the x-axis.
+                        We can notice in the MLB that during 2020, there was a significant drop in salaries for every team.
+                        There was likely a drop because there was a decrease in games played."))
            )
   )
   )
@@ -137,14 +133,7 @@ server<- function(input, output, session) {
              Year <= input$year_range[2])
   })
   
-  adjusted_data <- reactive({
-    df <- filtered_data()
-    if (input$inflation_adjustment == "Yes") {
-      adjust_for_inflation(df)
-    } else {
-      df %>% mutate(adj_salary = mean_salary)
-    }
-  })
+  
   
 
   #Salary Plot
@@ -203,6 +192,9 @@ server<- function(input, output, session) {
     
   })
   
+  
+  
 }
+
 
 shinyApp(ui=ui, server=server)
