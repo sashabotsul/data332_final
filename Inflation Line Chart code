@@ -1,0 +1,72 @@
+nav_panel('Salary Growth',
+  h2('Salary Growth Trend with Inflation Growth'),
+  selectInput("selected_league", "Choose a League:", choices = c('MLB', 'NBA')),
+  sliderInput("year_range", "Select Year Range:", min = 1985, max = 2025, value = c(2000, 2024), sep = ""),
+  selectInput('selected_team', 'Choose a Team:', choices = NULL),  # Dynamically populated based on selected league
+  plotOutput('salary_growth_plot'),
+  wellPanel(h5('This chart compares the percentage change in average salary to the inflation rate for each year.
+  It helps evaluate whether salary growth aligns with or outpaces inflation.'))
+)
+
+##################################################################################################################################################################################
+# Update the team choices when the league is selected
+observeEvent(input$selected_league, {
+  team_choices <- unique(league_data$teamID[league_data$sport == input$selected_league])
+  updateSelectInput(session, 'selected_team', choices = team_choices,
+                    selected = team_choices[1])  # Set default team selection
+})
+
+# Reactive data based on selected league, team, and year range
+filtered_data <- reactive({
+  df <- league_data %>%
+    filter(sport == input$selected_league,
+           Year >= input$year_range[1],
+           Year <= input$year_range[2])
+  
+  if (!is.null(input$selected_team)) {
+    df <- df %>%
+      filter(teamID == input$selected_team)  # Filter by selected team
+  }
+  
+  return(df)
+})
+
+# Render the salary growth plot (Percentage change in salary vs Inflation)
+output$salary_growth_plot <- renderPlot({
+  df <- filtered_data()
+  if (nrow(df) == 0) return(NULL)
+  
+  # Calculate average salary per year, inflation, and salary growth
+  salary_summary <- df %>%
+    group_by(Year) %>%
+    summarise(
+      avg_salary = mean(mean_salary, na.rm = TRUE),
+      inflation = mean(Inflation_Rate, na.rm = TRUE)
+    ) %>%
+    arrange(Year) %>%
+    mutate(
+      salary_growth = (avg_salary - lag(avg_salary)) / lag(avg_salary) * 100  # Calculate percentage salary growth
+    )
+  
+  # Remove the first year as it has NA for salary growth
+  salary_summary <- salary_summary %>% filter(!is.na(salary_growth))
+  
+  # Create the plot
+  ggplot(salary_summary, aes(x = Year)) +
+    geom_line(aes(y = salary_growth), color = "blue", size = 1.2, linetype = "solid") +
+    geom_line(aes(y = inflation), color = "red", size = 1.2, linetype = "dashed") +
+    labs(
+      title = paste("Salary Growth vs Inflation for", input$selected_team, "in", input$selected_league),
+      x = "Year", 
+      y = "Percentage (%)",
+      subtitle = paste("Salary growth compared to inflation")
+    ) +
+    scale_y_continuous(labels = scales::percent) +
+    theme_minimal() +
+    theme(
+      legend.position = "bottom", 
+      plot.title = element_text(hjust = 0.5),
+      plot.subtitle = element_text(hjust = 0.5)
+    ) +
+    scale_color_manual(name = "Legend", values = c("blue", "red"), labels = c("Salary Growth", "Inflation"))
+})
