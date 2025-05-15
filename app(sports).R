@@ -57,7 +57,7 @@ ui <- fluidPage(
     # Salary Charts Panel
     nav_panel('Salary Charts',
               h2('Salary Trends'),
-              selectInput("selected_league_trend", "Choose a League:", choices = c('MLB', 'NBA')),
+              selectInput("selected_league_trend", "Choose League(s):", choices = c('MLB', 'NBA'), multiple = TRUE, selected = 'MLB'),
               sliderInput("year_range_trend", "Select Year Range:", min = 1985, max = 2025, value = c(2000, 2024), sep = ""),
               plotOutput("salaryTrendPlot"),
               wellPanel(h5('This chart displays the average salary trend over time for the selected league, based on the chosen year range.'))
@@ -66,7 +66,7 @@ ui <- fluidPage(
     # Salary vs Inflation Panel
     nav_panel('Salary vs Inflation',
               h2('Salary Growth Trend with Inflation Growth'),
-              selectInput("selected_league_inflation", "Choose a League:", choices = c('MLB', 'NBA')),
+              selectInput("selected_league_inflation", "Choose League(s):", choices = c('MLB', 'NBA'), selected = 'MLB', multiple = TRUE),
               sliderInput("year_range_inflation", "Select Year Range:", min = 1985, max = 2025, value = c(2000, 2024), sep = ""),
               selectInput('selected_team_inflation', 'Choose a Team:', choices = NULL),
               plotOutput('salary_growth_plot'),
@@ -104,19 +104,19 @@ server <- function(input, output, session) {
   
   # Update team selection based on league choice for "Salary vs Inflation" panel
   observeEvent(input$selected_league_inflation, {
-    team_choices <- c('All Teams', unique(league_data$teamID[league_data$sport == input$selected_league_inflation]))
+    team_choices <- c('All Teams', unique(league_data$teamID[league_data$sport %in% input$selected_league_inflation]))
     updateSelectInput(session, 'selected_team_inflation', choices = team_choices, selected = team_choices[1])
   })
   
   # Filter data for "Salary Charts" panel (Salary Trend)
   filtered_data_trend <- reactive({
     req(input$selected_league_trend)
-    df <- league_data %>%
-      filter(sport == input$selected_league_trend,
+    league_data %>%
+      filter(sport %in% input$selected_league_trend,
              Year >= input$year_range_trend[1],
              Year <= input$year_range_trend[2])
-    return(df)
   })
+  
   
   # Filter data for "Salary vs Inflation" panel
   filtered_data_inflation <- reactive({
@@ -155,51 +155,66 @@ server <- function(input, output, session) {
   output$salaryTrendPlot <- renderPlot({
     df <- filtered_data_trend()
     req(df)
+    
     df %>%
-      group_by(Year) %>%
-      summarise(mean_salary = mean(mean_salary, na.rm = TRUE)) %>%
-      ggplot(aes(x = Year, y = mean_salary)) +
-      geom_line(color = "steelblue", linewidth = 1.2) +
-      labs(title = paste("Average Salary Over Time -", input$selected_league_trend),
-           x = "Year", y = "Average Salary") +
+      group_by(Year, sport) %>%
+      summarise(mean_salary = mean(mean_salary, na.rm = TRUE), .groups = 'drop') %>%
+      ggplot(aes(x = Year, y = mean_salary, color = sport)) +
+      geom_line(linewidth = 1.2) +
+      labs(
+        title = "Average Salary Over Time",
+        x = "Year", y = "Average Salary",
+        color = "League"
+      ) +
       scale_y_continuous(labels = label_comma()) +
       theme_minimal()
   })
+  
   
   # Salary Growth vs Inflation Plot
   output$salary_growth_plot <- renderPlot({
     df <- filtered_data_inflation()
     req(df)
     
-    # Calculate salary growth and inflation
+    # Compute salary growth and inflation rate per league
     salary_summary <- df %>%
-      group_by(Year) %>%
+      group_by(sport, Year) %>%
       summarise(
         avg_salary = mean(mean_salary, na.rm = TRUE),
-        inflation = mean(Inflation_Rate, na.rm = TRUE)
+        inflation = mean(Inflation_Rate, na.rm = TRUE),
+        .groups = 'drop'
       ) %>%
-      arrange(Year) %>%
+      arrange(sport, Year) %>%
+      group_by(sport) %>%
       mutate(
-        salary_growth = (avg_salary - lag(avg_salary)) / lag(avg_salary) * 100
-      )
+        salary_growth = (avg_salary - lag(avg_salary)) / lag(avg_salary),
+        inflation_pct = inflation / 100
+      ) %>%
+      filter(!is.na(salary_growth)) %>%
+      ungroup()
     
-    # Filter out first year (NA for salary growth)
-    salary_summary <- salary_summary %>% filter(!is.na(salary_growth))
+    # Melt the data for plotting
+    plot_data <- salary_summary %>%
+      pivot_longer(cols = c("salary_growth", "inflation_pct"),
+                   names_to = "metric", values_to = "value") %>%
+      mutate(metric = recode(metric,
+                             "salary_growth" = "Salary Growth",
+                             "inflation_pct" = "Inflation"))
     
-    # Plot salary growth vs inflation
-    ggplot(salary_summary, aes(x = Year)) +
-      geom_line(aes(y = salary_growth), color = "blue", size = 1.2, linetype = "solid") +
-      geom_line(aes(y = inflation), color = "red", size = 1.2, linetype = "dashed") +
-      labs(
-        title = paste("Salary Growth vs Inflation for", input$selected_team_inflation, "in", input$selected_league_inflation),
-        x = "Year", 
-        y = "Percentage (%)",
-        subtitle = "Salary growth compared to inflation"
-      ) +
+    # Plot
+    ggplot(plot_data, aes(x = Year, y = value, color = sport, linetype = metric)) +
+      geom_line(size = 1.2) +
       scale_y_continuous(labels = scales::percent) +
-      theme_minimal() +
-      scale_color_manual(name = "Legend", values = c("blue", "red"), labels = c("Salary Growth", "Inflation"))
+      labs(
+        title = "Salary Growth vs Inflation by League",
+        x = "Year",
+        y = "Percentage (%)",
+        color = "League",
+        linetype = "Metric"
+      ) +
+      theme_minimal()
   })
+  
   
   # Salary Heatmap Plot
   output$salaryHeatmap <- renderPlot({
