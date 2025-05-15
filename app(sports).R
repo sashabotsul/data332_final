@@ -95,7 +95,15 @@ ui <- fluidPage(
                        wellPanel(h5("This chart shows the salary growth trend for each team in the selected league. Each panel displays a team's average or median salary over time, with years shown on the x-axis."))
                 )
               )
-    )
+    ),
+
+    nav_panel('Win % vs. Salary',
+              h2('Win Percentage vs. Salary'),
+              selectInput("", "Choose a League:", choices = c('MLB', 'NBA')),
+              plotOutput(),
+              wellPanel(h5()
+                        )
+              )
   )
 )
 
