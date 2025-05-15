@@ -28,16 +28,17 @@ df_mlb_1985_2024 <- bind_rows(
 )
 
 #fix team names
-replacement_map <- c(
+replacement_map_mlb <- c(
   "ARI" = "AZ", "CAL" = "LAA", "CHA" = "CWS", "CHN" = "CHC", "CHW" = "CWS",
   "FLO" = "FLA", "KCA" = "KC", "LAN" = "LAD", "ML4" = "MIL", "MON" = "WSH",
   "NYA" = "NYY", "NYN" = "NYM", "SDN" = "SD", "SFN" = "SF", "SLN" = "STL",
-  "WAS" = "WSH", "TBA" = "TB", "ANA" = "LAA", "MTL" = "WSH", "FLA" = "MIA"
+  "WAS" = "WSH", "TBA" = "TB", "ANA" = "LAA", "MTL" = "WSH", "FLA" = "MIA",
+  "KCR" = "KC", "ATH" = "OAK", "SDP" = "SD", "SFG" = "SF", "WSN" = "WSH"
 )
 
 # Apply mapping to dataframe
 df_mlb_1985_2024 <- df_mlb_1985_2024 %>%
-  mutate(teamID = ifelse(teamID %in% names(replacement_map), replacement_map[teamID], teamID))
+  mutate(teamID = ifelse(teamID %in% names(replacement_map_mlb), replacement_map_mlb[teamID], teamID))
 
 df_mlb_with_teams <- df_mlb_1985_2024 %>%
   group_by(Year, teamID) %>%
@@ -60,14 +61,6 @@ df_mlb_teams <- df_mlb_1985_2024 %>%
   summarise(
     count = n()
   )
-
-#read in mlb teams
-df_mlb_wins <- read_excel('data/mlb_wins.xlsx', .name_repair = 'universal')
-df_mlb_wins <- df_mlb_wins %>%
-  filter(Year >= 1985) %>%
-  select(where(~ !all(is.na(.))))
-
-
 
 NBA_1984_2018_url <- getURL('https://raw.githubusercontent.com/sashabotsul/data332_final/refs/heads/main/data/NBA_Salaries_1985to2018.csv')
 df_NBA_1984_2018 <- read.csv(text = NBA_1984_2018_url)
@@ -176,7 +169,8 @@ team_replacement_map <- c(
   "New Orleans/Oklahoma City Hornets" = "New Orleans Pelicans",
   "Seattle SuperSonics" = "Oklahoma City Thunder",
   "Vancouver Grizzlies" = "Memphis Grizzlies",
-  "Washington Bullets" = "Washington Wizards"
+  "Washington Bullets" = "Washington Wizards",
+  "LA Clippers" = "Los Angeles Clippers"
 )
 
 # Apply mapping to dataset
@@ -219,5 +213,65 @@ df_CPI <- df_CPI %>%
   
 #join in inflation data
 df_combined_with_teams <- left_join(df_combined_with_teams, df_CPI, by = "Year")
-write.csv(df_combined_with_teams, "combined_data_with_teams.csv")
 
+#read in win data
+mlb_wins_url <- getURL('https://raw.githubusercontent.com/sashabotsul/data332_final/refs/heads/main/data/mlb_wins.csv')
+df_mlb_wins <- read.csv(text = mlb_wins_url)
+
+#filter out not needed years and data for old teams
+df_mlb_wins <- df_mlb_wins %>%
+  filter(Year >= 1985) %>%
+  filter(Year < 2025) %>%
+  select(where(~ !all(is.na(.))))
+
+#reformat dataset to cooperate
+df_mlb_wins <- df_mlb_wins %>%
+  pivot_longer(cols = -c(Year, G),  # Select all columns except Year and G
+               names_to = "teamID",    # New column to store team names
+               values_to = "wins") %>%
+  mutate(win_loss = wins / G) %>%  # Calculate win-loss ratio
+  select(-wins, -G) %>%  # Drop original wins and games played columns
+  mutate(teamID = ifelse(teamID %in% names(replacement_map_mlb), replacement_map_mlb[teamID], teamID))
+
+#read in NBA wins data to 2017
+nba_wins_to2018_url <- getURL('https://raw.githubusercontent.com/sashabotsul/data332_final/refs/heads/main/data/nba_Team_Records.csv')
+df_nba_wins_to2018 <- read.csv(text = nba_wins_to2018_url)
+
+#clean data
+df_nba_wins_to2018 <- df_nba_wins_to2018 %>%
+  select(Team, Season, W.L.) %>%
+  mutate(Season = as.integer(sub("-.*", "", Season)) + 1) %>%
+  mutate(Team = gsub("\\*", "", Team)) %>%
+  rename(teamID = Team) %>%
+  rename(win_loss = W.L.) %>%
+  rename(Year = Season) %>%
+  filter(Year >= 1985) %>%
+  mutate(teamID = ifelse(teamID %in% names(team_replacement_map), team_replacement_map[teamID], teamID))
+
+#read in remaining years need
+nba_wins_to2023_url <- getURL('https://raw.githubusercontent.com/sashabotsul/data332_final/refs/heads/main/data/nba_team_stats_00_to_23.csv')
+df_nba_wins_to2023 <- read.csv(text = nba_wins_to2023_url)
+
+#clean data
+df_nba_wins_to2023 <- df_nba_wins_to2023 %>%
+  select(Team, win_percentage, season) %>%
+  mutate(season = as.integer(sub("-.*", "", season)) + 1) %>%
+  rename(Year = season) %>%
+  rename(teamID = Team) %>%
+  rename(win_loss = win_percentage) %>%
+  filter(Year >= 2019) %>%
+  filter(Year < 2024) %>%
+  mutate(teamID = ifelse(teamID %in% names(team_replacement_map), team_replacement_map[teamID], teamID))
+
+#join win data together
+df_wins <- bind_rows(
+  df_mlb_wins, df_nba_wins_to2018, df_nba_wins_to2023
+)
+
+df_teams <- df_mlb_wins %>%
+  group_by(teamID) %>%
+  summarise(count = n())
+
+#join into combinded dataset
+df_combined_with_teams <- left_join(df_combined_with_teams, df_wins, by = c("Year", "teamID"))
+write.csv(df_combined_with_teams, "combined_data_with_teams.csv")
