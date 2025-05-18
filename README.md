@@ -170,7 +170,7 @@ output$salaryHeatmap <- renderPlot({
   })  
 ```
 
-4.
+4. Salary by Year Plotted by Team
 - Chart
 ```
 output$salary_by_year_plot <- renderPlot({
