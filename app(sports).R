@@ -10,6 +10,8 @@ library(viridis)
 library(scales)
 library(plotly)
 
+
+
 # Load dataset from GitHub
 data_url <- getURL('https://raw.githubusercontent.com/sashabotsul/data332_final/refs/heads/main/data/combined_data_with_teams.csv')
 league_data <- read.csv(text = data_url)
@@ -48,7 +50,14 @@ ui <- fluidPage(
                   tags$li("Compare sport salary trend lines", style = "font-size: 18px;"),
                   tags$li("Compare individual salaries within a sport", style = "font-size: 18px;")
                 )
-              )
+              ),
+              h3('Ideas and Original Plans'),
+              wellPanel(
+                tags$p('We ran into several conflicts with our plans during our project. 
+                       Originally, we wanted to include more sports, including football, hockey, and soccer. 
+                       Unfortunately, the data for these was unavailable, and scraping violated terms of service. 
+                       We also wanted to compare salaries to viewership trends, but that data was limited.', style = "font-size: 18px;"))
+              
     ),
     
     # Salary trend over time
@@ -56,7 +65,8 @@ ui <- fluidPage(
               h2('Salary Trends'),
               selectInput("selected_league_trend", "Choose League(s):", choices = c('MLB', 'NBA'), multiple = TRUE, selected = 'MLB'),
               sliderInput("year_range_trend", "Select Year Range:", min = 1985, max = 2025, value = c(2000, 2024), sep = ""),
-              plotOutput("salaryTrendPlot")
+              plotOutput("salaryTrendPlot"),
+              wellPanel(h5('This chart displays the average salary trend over time for the selected league, based on the chosen year range.'))
     ),
     
     # Salary growth vs inflation
@@ -65,7 +75,8 @@ ui <- fluidPage(
               selectInput("selected_league_inflation", "Choose League(s):", choices = c('MLB', 'NBA'), selected = 'MLB', multiple = TRUE),
               sliderInput("year_range_inflation", "Select Year Range:", min = 1985, max = 2025, value = c(2000, 2024), sep = ""),
               selectInput('selected_team_inflation', 'Choose a Team:', choices = NULL),
-              plotOutput('salary_growth_plot')
+              plotOutput('salary_growth_plot'),
+              wellPanel(h5('This chart compares the percentage change in salary versus inflation growth for the selected team and league.'))
     ),
     
     # Salary heatmap by team and year
@@ -73,7 +84,8 @@ ui <- fluidPage(
               h2('Team-Year Salary Heatmap'),
               selectInput("selected_league_heatmap", "Choose a League:", choices = c('MLB', 'NBA')),
               sliderInput("year_range_heatmap", "Select Year Range:", min = 1985, max = 2025, value = c(2000, 2024), sep = ""),
-              plotOutput('salaryHeatmap')
+              plotOutput('salaryHeatmap'),
+              wellPanel(h5('This heatmap visualizes the average salary trend over time for the chosen league by team, based on the chosen year range.'))
     ),
     
     # Salary trend by team over time
@@ -85,7 +97,8 @@ ui <- fluidPage(
                        selectInput("selected_league_teams", "Choose a League:", choices = c('MLB', 'NBA'))
                 ),
                 column(9,
-                       plotOutput('salary_by_year_plot', height = "1200px", width = "1000px")
+                       plotOutput('salary_by_year_plot', height = "1200px", width = "1000px"),
+                       wellPanel(h5("This chart shows the salary growth trend for each team in the selected league. Each panel displays a team's average or median salary over time, with years shown on the x-axis."))
                 )
               )
     ),
@@ -132,7 +145,7 @@ server <- function(input, output, session) {
   filtered_data_inflation <- reactive({
     req(input$selected_league_inflation)
     df <- league_data %>%
-      filter(sport == input$selected_league_inflation,
+      filter(sport %in% input$selected_league_inflation,
              Year >= input$year_range_inflation[1],
              Year <= input$year_range_inflation[2])
     if (input$selected_team_inflation != 'All Teams') {
@@ -193,6 +206,7 @@ server <- function(input, output, session) {
     ggplot(plot_data, aes(x = Year, y = value, color = sport, linetype = metric)) +
       geom_line(size = 1.2) +
       scale_y_continuous(labels = percent) +
+      scale_linetype_manual(values = c("Salary Growth" = "solid", "Inflation" = "dotted")) +
       labs(title = "Salary Growth vs Inflation by League", x = "Year", y = "Percentage (%)", color = "League", linetype = "Metric") +
       theme_minimal()
   })
