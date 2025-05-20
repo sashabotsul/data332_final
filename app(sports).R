@@ -39,16 +39,17 @@ ui <- fluidPage(
               h3('Our Research'),
               wellPanel(tags$p('We chose to look at different sport salaries, starting in 1985. The sports we are looking at are baseball and basketball. We are interested to see if a more popular sport might have a higher salary, which we believe will be basketball.', style = "font-size: 18px;")),
               h3('Scope of Project'),
-              wellPanel(tags$p('The scope of our project is to compare salaries of sports (baseball and basketball) to each other and within each sport, as well as the salaries adjusted for inflation.', style = "font-size: 18px;")),
+              wellPanel(tags$p('The scope of our project is to compare salaries of sports (baseball and basketball) to each other and within each sport, 
+                               as well as the salaries compared to inflation.', style = "font-size: 18px;")),
               h3('Requirements of Project'),
               wellPanel(
                 tags$p("The requirements we have set for our project include:", style = "font-size: 18px;"),
                 tags$ul(
                   tags$li("Clean the data of any unnecessary columns", style = "font-size: 18px;"),
-                  tags$li("Adjust salaries for inflation", style = "font-size: 18px;"),
                   tags$li("Compare salary growth to inflation growth", style = "font-size: 18px;"),
                   tags$li("Compare sport salary trend lines", style = "font-size: 18px;"),
-                  tags$li("Compare individual salaries within a sport", style = "font-size: 18px;")
+                  tags$li("Compare individual salaries within a sport", style = "font-size: 18px;"),
+                  tags$li("Calculate and compare win percentage vs average team salary", style = "font-size: 18px;")
                 )
               ),
               h3('Ideas and Original Plans'),
