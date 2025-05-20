@@ -30,10 +30,10 @@ df_mlb_1985_2024 <- bind_rows(
 #fix team names
 replacement_map_mlb <- c(
   "ARI" = "AZ", "CAL" = "LAA", "CHA" = "CWS", "CHN" = "CHC", "CHW" = "CWS",
-  "FLO" = "FLA", "KCA" = "KC", "LAN" = "LAD", "ML4" = "MIL", "MON" = "WSH",
+  "FLO" = "MIA", "KCA" = "KC", "LAN" = "LAD", "ML4" = "MIL", "MON" = "WSH",
   "NYA" = "NYY", "NYN" = "NYM", "SDN" = "SD", "SFN" = "SF", "SLN" = "STL",
-  "WAS" = "WSH", "TBA" = "TB", "ANA" = "LAA", "MTL" = "WSH", "FLA" = "MIA",
-  "KCR" = "KC", "ATH" = "OAK", "SDP" = "SD", "SFG" = "SF", "WSN" = "WSH"
+  "WAS" = "WSH", "TBA" = "TB", "ANA" = "LAA", "MTL" = "WSH", "KCR" = "KC",
+  "ATH" = "OAK", "SDP" = "SD", "SFG" = "SF", "WSN" = "WSH", "FLA" = "MIA"
 )
 
 # Apply mapping to dataframe
@@ -233,7 +233,7 @@ df_mlb_wins <- df_mlb_wins %>%
   select(-wins, -G) %>%  # Drop original wins and games played columns
   mutate(teamID = ifelse(teamID %in% names(replacement_map_mlb), replacement_map_mlb[teamID], teamID))
 
-#read in NBA wins data to 2017
+#read in NBA wins data to 2018
 nba_wins_to2018_url <- getURL('https://raw.githubusercontent.com/sashabotsul/data332_final/refs/heads/main/data/nba_Team_Records.csv')
 df_nba_wins_to2018 <- read.csv(text = nba_wins_to2018_url)
 
