@@ -151,6 +151,29 @@ output$salaryTrendPlot <- renderPlot({
 2.
 - Chart
 ```
+ output$salary_growth_plot <- renderPlot({
+    df <- filtered_data_inflation()
+    req(df)
+    salary_summary <- df %>%
+      group_by(sport, Year) %>%
+      summarise(avg_salary = mean(mean_salary, na.rm = TRUE), inflation = mean(Inflation_Rate, na.rm = TRUE), .groups = 'drop') %>%
+      arrange(sport, Year) %>%
+      group_by(sport) %>%
+      mutate(salary_growth = (avg_salary - lag(avg_salary)) / lag(avg_salary), inflation_pct = inflation / 100) %>%
+      filter(!is.na(salary_growth)) %>%
+      ungroup()
+    
+    plot_data <- salary_summary %>%
+      pivot_longer(cols = c("salary_growth", "inflation_pct"), names_to = "metric", values_to = "value") %>%
+      mutate(metric = recode(metric, "salary_growth" = "Salary Growth", "inflation_pct" = "Inflation"))
+    
+    ggplot(plot_data, aes(x = Year, y = value, color = sport, linetype = metric)) +
+      geom_line(size = 1.2) +
+      scale_y_continuous(labels = percent) +
+      scale_linetype_manual(values = c("Salary Growth" = "solid", "Inflation" = "dotted")) +
+      labs(title = "Salary Growth vs Inflation by League", x = "Year", y = "Percentage (%)", color = "League", linetype = "Metric") +
+      theme_minimal()
+  })
 ```
 
 3. Salary Heat Map
