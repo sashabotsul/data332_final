@@ -3,7 +3,7 @@
 
 ---
 ## 🎉 Shiny App 🎉 
-<a href="https://augustanasb4.shinyapps.io/final_sports/" target="_blank"> https://augustanasb4.shinyapps.io/final_sports/</a>
+https://augustanasb4.shinyapps.io/final_sports/
 ---
 
 ### This page shows snippets of our code during the process of cleaning our sport salary data, creating charts and the shiny app.
