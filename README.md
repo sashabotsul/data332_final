@@ -3,7 +3,7 @@
 
 ---
 ## 🎉 Shiny App 🎉
-https://augustanasb4.shinyapps.io/final_sports/
+<a href="[http://www.ucsb.edu/](https://augustanasb4.shinyapps.io/final_sports/)" >target="_blank">https://augustanasb4.shinyapps.io/final_sports/</a>
 ---
 
 ### This page shows snippets of our code during the process of cleaning our sport salary data, creating charts and the shiny app.
