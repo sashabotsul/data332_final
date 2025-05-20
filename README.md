@@ -148,7 +148,7 @@ output$salaryTrendPlot <- renderPlot({
   })
 ```
 
-2.
+2. Salary growth vs Inflation
 - Chart
 ```
  output$salary_growth_plot <- renderPlot({
