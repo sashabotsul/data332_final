@@ -2,8 +2,8 @@
 <p> by: Sasha Botsul, Tanner Buol, Logan Farley </p>
 
 ---
-## 🎉 Shiny App 🎉
-<a href="[http://www.ucsb.edu/](https://augustanasb4.shinyapps.io/final_sports/)" >target="_blank">https://augustanasb4.shinyapps.io/final_sports/</a>
+## 🎉 Shiny App 🎉 
+<a href="https://augustanasb4.shinyapps.io/final_sports/" >target="_blank"> https://augustanasb4.shinyapps.io/final_sports/</a>
 ---
 
 ### This page shows snippets of our code during the process of cleaning our sport salary data, creating charts and the shiny app.
